@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a3a5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="速読TOEIC">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>TOEIC 速読トレーナー</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Georgia', serif;
+    background: #f5f0e8;
+    color: #2c2c2c;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .header {
+    background: #1a3a5c;
+    color: white;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 4px solid #e8b84b;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-title { font-size: 1.1rem; letter-spacing: 0.05em; }
+  .header-sub { font-size: 0.7rem; opacity: 0.65; font-family: sans-serif; }
+
+  .score-bar { display: flex; gap: 16px; align-items: center; font-family: sans-serif; }
+  .score-item { text-align: center; }
+  .score-item .num { font-size: 1.3rem; font-weight: 700; color: #e8b84b; }
+  .score-item .label { font-size: 0.6rem; opacity: 0.7; }
+
+  .timer-wrap { position: relative; width: 52px; height: 52px; }
+  .timer-wrap svg { transform: rotate(-90deg); }
+  .timer-text {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.95rem; font-weight: 700; font-family: sans-serif;
+  }
+  .timer-text.warn { color: #ff6b6b; }
+
+  .main {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 16px 12px 60px;
+  }
+
+  .genre-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 2px;
+    font-size: 0.68rem;
+    font-family: sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .genre-email    { background: #d4e8f5; color: #1a5c8a; }
+  .genre-flyer    { background: #fde8cc; color: #8a4a1a; }
+  .genre-notice   { background: #d4f5e2; color: #1a6b3a; }
+  .genre-job      { background: #e8d4f5; color: #5c1a8a; }
+  .genre-schedule { background: #f5d4d4; color: #8a1a1a; }
+  .genre-memo     { background: #f5f0d4; color: #6b5a1a; }
+  .genre-ad       { background: #d4f5f5; color: #1a6b6b; }
+
+  .passage-card {
+    background: white;
+    border: 1px solid #d0c8b8;
+    border-top: 4px solid #1a3a5c;
+    padding: 20px 18px;
+    margin-bottom: 16px;
+  }
+  .passage-title { font-size: 1rem; font-weight: 700; margin-bottom: 4px; color: #1a3a5c; }
+  .passage-meta { font-size: 0.72rem; color: #888; font-family: sans-serif; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+  .passage-body { font-size: 0.9rem; line-height: 1.75; color: #333; }
+  .passage-body p { margin-bottom: 8px; }
+  .passage-body .email-header {
+    background: #f8f6f0; padding: 10px; margin-bottom: 12px;
+    font-family: sans-serif; font-size: 0.78rem; color: #555;
+    border-left: 3px solid #1a3a5c;
+  }
+  .passage-body .email-header div { margin-bottom: 2px; }
+  .flyer-center { text-align: center; }
+  .flyer-big { font-size: 1.15rem; font-weight: 700; color: #8a4a1a; margin-bottom: 6px; }
+  .flyer-price { font-size: 1.4rem; font-weight: 700; color: #cc2200; }
+  .flyer-tag { display: inline-block; background: #cc2200; color: white; padding: 2px 8px; font-size: 0.7rem; font-family: sans-serif; margin: 4px 3px; }
+  .notice-box { border: 2px solid #1a6b3a; padding: 12px; margin-bottom: 10px; }
+  .notice-title { font-weight: 700; color: #1a6b3a; margin-bottom: 4px; font-size: 0.9rem; }
+  .bullet { margin-left: 14px; margin-bottom: 4px; font-size: 0.9rem; }
+  .bullet::before { content: "• "; color: #1a3a5c; }
+  .job-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; font-family: sans-serif; margin-top: 8px; }
+  .job-table td { padding: 5px 8px; border: 1px solid #ddd; }
+  .job-table td:first-child { font-weight: 600; background: #f5f0e8; width: 38%; }
+
+  .reading-progress { height: 3px; background: #e0d8cc; margin-bottom: 14px; }
+  .reading-progress-fill { height: 100%; background: #e8b84b; transition: width 0.5s; }
+
+  .questions-section { margin-top: 0; }
+  .questions-section h3 {
+    font-size: 0.8rem; font-family: sans-serif; font-weight: 600;
+    color: #555; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .question-block { margin-bottom: 18px; }
+  .question-text { font-size: 0.88rem; margin-bottom: 8px; color: #222; font-weight: 600; }
+  .options { display: flex; flex-direction: column; gap: 5px; }
+  .option-btn {
+    text-align: left; padding: 8px 12px;
+    border: 1.5px solid #c8bfb0; background: white;
+    cursor: pointer; font-size: 0.82rem; font-family: sans-serif; color: #333;
+    transition: all 0.12s; display: flex; gap: 8px; align-items: flex-start;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .option-btn:active:not(:disabled) { background: #f0f5ff; }
+  .option-btn .opt-label { font-weight: 700; color: #1a3a5c; min-width: 28px; flex-shrink: 0; }
+  .option-btn.correct { background: #d4f5e2; border-color: #1a6b3a; color: #1a6b3a; }
+  .option-btn.wrong   { background: #f5d4d4; border-color: #8a1a1a; color: #8a1a1a; }
+  .option-btn.reveal  { background: #d4f5e2; border-color: #1a6b3a; opacity: 0.7; }
+  .option-btn:disabled { cursor: default; }
+
+  .feedback { font-size: 0.75rem; margin-top: 4px; padding: 4px 8px; font-family: sans-serif; line-height: 1.4; }
+  .feedback.ok { color: #1a6b3a; background: #edfaf2; }
+  .feedback.ng { color: #8a1a1a; background: #faeeed; }
+
+  .actions {
+    position: sticky; bottom: 0;
+    background: #f5f0e8;
+    border-top: 1px solid #ddd;
+    padding: 10px 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin: 0 -12px;
+  }
+  .btn-next {
+    background: #1a3a5c; color: white; border: none;
+    padding: 10px 24px; font-size: 0.88rem; font-family: sans-serif;
+    cursor: pointer; letter-spacing: 0.04em;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-next:active { background: #2a5a8c; }
+  .btn-next:disabled { background: #aaa; cursor: default; }
+  .progress-text { font-size: 0.78rem; color: #888; font-family: sans-serif; }
+
+  /* Start screen */
+  .start-screen { text-align: center; padding: 48px 20px; }
+  .start-screen h2 { font-size: 1.8rem; color: #1a3a5c; margin-bottom: 8px; }
+  .start-screen p { color: #666; font-family: sans-serif; margin-bottom: 4px; font-size: 0.88rem; }
+  .start-features { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+  .feature-tag { background: #1a3a5c; color: white; padding: 5px 12px; font-family: sans-serif; font-size: 0.75rem; }
+  .btn-start {
+    background: #e8b84b; border: none; padding: 14px 44px;
+    font-size: 1rem; font-family: sans-serif; font-weight: 700;
+    cursor: pointer; color: #1a3a5c; letter-spacing: 0.05em; margin-top: 8px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-start:active { background: #d4a535; }
+
+  /* Result */
+  .result-screen { text-align: center; padding: 52px 20px; }
+  .result-screen h2 { font-size: 1.7rem; margin-bottom: 8px; color: #1a3a5c; }
+  .result-score { font-size: 3.5rem; font-weight: 700; color: #e8b84b; margin: 16px 0; }
+  .result-comment { font-size: 0.92rem; color: #555; font-family: sans-serif; margin-bottom: 28px; line-height: 1.6; }
+  .btn-restart {
+    background: #e8b84b; border: none; padding: 13px 36px;
+    font-size: 0.95rem; font-family: sans-serif; font-weight: 700;
+    cursor: pointer; color: #1a3a5c;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .timeup-banner {
+    background: #ff6b6b; color: white; text-align: center;
+    padding: 7px; font-family: sans-serif; font-weight: 700;
+    letter-spacing: 0.08em; margin-bottom: 10px; font-size: 0.85rem;
+  }
+
+  /* Install prompt */
+  .install-banner {
+    background: #e8b84b; color: #1a3a5c;
+    padding: 10px 16px; font-family: sans-serif; font-size: 0.82rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .install-banner button {
+    background: #1a3a5c; color: white; border: none;
+    padding: 5px 14px; font-size: 0.8rem; cursor: pointer; white-space: nowrap;
+  }
+  .install-banner .dismiss { background: transparent; color: #1a3a5c; font-size: 1rem; padding: 4px 8px; }
+</style>
+</head>
+<body>
+
+<div id="installBanner" style="display:none" class="install-banner">
+  <span>📱 ホーム画面に追加してアプリとして使えます</span>
+  <div style="display:flex;gap:6px;flex-shrink:0">
+    <button id="installBtn">追加する</button>
+    <button class="dismiss" onclick="document.getElementById('installBanner').style.display='none'">✕</button>
+  </div>
+</div>
+
+<div class="header">
+  <div>
+    <div class="header-title">TOEIC 速読トレーナー</div>
+    <div class="header-sub">Reading Speed Practice</div>
+  </div>
+  <div class="score-bar" id="scoreBar" style="display:none">
+    <div class="score-item">
+      <div class="num" id="scoreCorrect">0</div>
+      <div class="label">正解</div>
+    </div>
+    <div class="score-item">
+      <div class="num" id="scoreTotal">0</div>
+      <div class="label">問題数</div>
+    </div>
+    <div class="timer-wrap">
+      <svg width="52" height="52" viewBox="0 0 52 52">
+        <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="4"/>
+        <circle id="timerCircle" cx="26" cy="26" r="22" fill="none" stroke="#e8b84b" stroke-width="4"
+          stroke-dasharray="138.2" stroke-dashoffset="0" stroke-linecap="round"/>
+      </svg>
+      <div class="timer-text" id="timerText">75</div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div id="startScreen" class="start-screen">
+    <h2>TOEIC 速読トレーナー</h2>
+    <p>メール・チラシ・求人・お知らせなど</p>
+    <p>TOEICに出るパッセージで速読力を鍛えよう！</p>
+    <div class="start-features">
+      <div class="feature-tag">📧 ビジネスメール</div>
+      <div class="feature-tag">📄 宣伝チラシ</div>
+      <div class="feature-tag">📋 求人広告</div>
+      <div class="feature-tag">📢 お知らせ</div>
+      <div class="feature-tag">⏱ 75秒タイマー</div>
+      <div class="feature-tag">📊 スコア管理</div>
+    </div>
+    <p style="font-size:0.82rem;color:#999;margin-bottom:20px;">全10パッセージ・各2〜3問</p>
+    <button class="btn-start" onclick="startGame()">スタート！</button>
+  </div>
+
+  <div id="gameScreen" style="display:none">
+    <div id="timeupBanner" style="display:none" class="timeup-banner">⏰ TIME UP！ — 正解を確認してください</div>
+    <div class="reading-progress"><div class="reading-progress-fill" id="progressFill"></div></div>
+    <div id="passageContainer"></div>
+    <div class="actions">
+      <div class="progress-text" id="progressText"></div>
+      <button class="btn-next" id="btnNext" onclick="nextPassage()">次へ →</button>
+    </div>
+  </div>
+
+  <div id="resultScreen" style="display:none" class="result-screen">
+    <h2>お疲れさまでした！</h2>
+    <div class="result-score" id="resultScore">0/0</div>
+    <div class="result-comment" id="resultComment"></div>
+    <button class="btn-restart" onclick="restartGame()">もう一度チャレンジ！</button>
+  </div>
+</div>
+
+<script>
+// PWA Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+// PWA Install prompt
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').style.display = 'flex';
+});
+document.getElementById('installBtn')?.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('installBanner').style.display = 'none';
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').style.display = 'none';
+});
+
+// ===== PASSAGES =====
+const PASSAGES = [
+  {
+    genre: "email", genreLabel: "ビジネスメール",
+    title: "Meeting Reschedule Notice",
+    meta: "Internal Communication — Thornfield & Associates",
+    body: `<div class="email-header">
+      <div><b>From:</b> Sarah Mitchells &lt;s.mitchells@thornfield.com&gt;</div>
+      <div><b>To:</b> Project Team</div>
+      <div><b>Subject:</b> Rescheduling of Thursday's Strategy Meeting</div>
+    </div>
+    <p>Dear Team,</p>
+    <p>I am writing to inform you that the strategy meeting originally scheduled for <b>Thursday, June 5, at 2:00 PM</b> will need to be postponed. Due to an unexpected conflict with our overseas client visit, the conference room will not be available at that time.</p>
+    <p>The meeting has been rescheduled to <b>Friday, June 6, at 10:00 AM</b> in Meeting Room B on the third floor. The agenda remains unchanged. Please bring your updated project reports and any relevant data for review.</p>
+    <p>If you are unable to attend the rescheduled meeting, please notify me by Wednesday so we can make alternative arrangements. A video conference option will be available for those working remotely.</p>
+    <p>Best regards,<br>Sarah Mitchells, Project Manager</p>`,
+    questions: [
+      { q: "なぜ会議が変更されたのですか？", options: ["会議室が工事中のため","海外クライアントの来訪と重なったため","参加者の多くが不在のため","システムトラブルのため"], answer: 1, explanation: "「unexpected conflict with our overseas client visit」とあります。" },
+      { q: "新しい会議はいつ・どこで開催されますか？", options: ["木曜午後2時・会議室A","金曜午前10時・3階会議室B","金曜午後2時・会議室B","木曜午前10時・3階"], answer: 1, explanation: "「Friday, June 6, at 10:00 AM in Meeting Room B on the third floor」とあります。" },
+      { q: "出席できない場合、何をする必要がありますか？", options: ["月曜までに代理人を立てる","水曜までにSarahに連絡する","アジェンダを事前に提出する","木曜までにレポートを送る"], answer: 1, explanation: "「please notify me by Wednesday」とあります。" }
+    ]
+  },
+  {
+    genre: "flyer", genreLabel: "宣伝チラシ",
+    title: "Grand Opening Sale",
+    meta: "Retail Promotion — Kensington Home & Living",
+    body: `<div class="flyer-center">
+      <div class="flyer-big">🎉 GRAND OPENING CELEBRATION 🎉</div>
+      <div style="font-size:0.85rem;color:#555;margin-bottom:12px;">Kensington Home & Living — Westside Mall, Level 2</div>
+      <div class="flyer-price">UP TO 50% OFF</div>
+      <div style="margin:10px 0;font-size:0.82rem;">on selected furniture, kitchenware, and home décor</div>
+      <div><span class="flyer-tag">OPENING WEEK ONLY</span> <span class="flyer-tag">June 7–13</span></div>
+      <hr style="margin:14px 0;border-color:#ddd;">
+    </div>
+    <p>To celebrate our brand-new store at Westside Mall, we are offering <b>exclusive discounts</b> on over 2,000 products. Visit us during the opening week and receive a complimentary gift bag with any purchase over $80.</p>
+    <p>On <b>Saturday, June 8</b>, join us for a special <b>Interior Design Workshop</b> at 2:00 PM — free admission, no registration required.</p>
+    <p style="font-size:0.78rem;color:#888;">*Discounts apply to in-store purchases only. Cannot be combined with other offers.</p>`,
+    questions: [
+      { q: "セール期間はいつですか？", options: ["6月1日〜7日","6月7日〜13日","6月8日〜14日","6月2日〜8日"], answer: 1, explanation: "「June 7–13」とあります。" },
+      { q: "$80以上購入した場合、何がもらえますか？", options: ["割引クーポン","ギフトバッグ","無料デリバリー","次回10%オフ券"], answer: 1, explanation: "「complimentary gift bag with any purchase over $80」とあります。" },
+      { q: "ワークショップについて正しいのはどれですか？", options: ["事前予約が必要","有料イベント","6月8日土曜日に開催","オンライン参加のみ"], answer: 2, explanation: "「Saturday, June 8 at 2:00 PM — free admission, no registration required」とあります。" }
+    ]
+  },
+  {
+    genre: "notice", genreLabel: "お知らせ",
+    title: "Building Maintenance Notice",
+    meta: "Facility Management — Clearwater Office Tower",
+    body: `<div class="notice-box">
+      <div class="notice-title">⚠ IMPORTANT NOTICE TO ALL TENANTS</div>
+      <p>Scheduled Building Maintenance — Water Supply Interruption</p>
+    </div>
+    <p>The management team of Clearwater Office Tower wishes to inform all tenants that <b>routine maintenance work</b> will be carried out on the building's water supply system.</p>
+    <p><b>Date:</b> Saturday, June 14, 2026<br>
+    <b>Time:</b> 8:00 AM – 4:00 PM<br>
+    <b>Affected areas:</b> All floors, 1–18</p>
+    <p>During this period, <b>water will not be available</b> in restrooms, kitchens, and common areas. The building's fire suppression system will remain operational. Emergency services will not be affected.</p>
+    <p class="bullet">Tenants requiring special assistance should contact the management office by June 10.</p>
+    <p class="bullet">The parking garage will remain open and accessible throughout the day.</p>`,
+    questions: [
+      { q: "メンテナンス中に使えなくなるものはどれですか？", options: ["エレベーター","駐車場","水道","緊急サービス"], answer: 2, explanation: "「water will not be available in restrooms, kitchens, and common areas」とあります。" },
+      { q: "特別な支援が必要なテナントはいつまでに連絡すべきですか？", options: ["6月8日","6月10日","6月12日","6月14日"], answer: 1, explanation: "「contact the management office by June 10」とあります。" }
+    ]
+  },
+  {
+    genre: "job", genreLabel: "求人広告",
+    title: "Job Opening: Marketing Coordinator",
+    meta: "Recruitment — Nexora Digital Solutions",
+    body: `<p><b>Nexora Digital Solutions</b> is a fast-growing technology company. We are looking for a motivated <b>Marketing Coordinator</b> to join our team.</p>
+    <table class="job-table">
+      <tr><td>Position</td><td>Marketing Coordinator (Full-time)</td></tr>
+      <tr><td>Location</td><td>Downtown Vancouver, BC (Hybrid)</td></tr>
+      <tr><td>Salary</td><td>$52,000 – $65,000 per year</td></tr>
+      <tr><td>Start Date</td><td>August 1, 2026</td></tr>
+      <tr><td>Deadline</td><td>June 30, 2026</td></tr>
+    </table>
+    <p style="margin-top:10px;"><b>Requirements:</b></p>
+    <p class="bullet">Bachelor's degree in Marketing or related field</p>
+    <p class="bullet">Minimum 2 years of relevant experience</p>
+    <p class="bullet">Proficiency in Microsoft Office and marketing analytics tools</p>
+    <p style="margin-top:8px;">To apply, send your résumé and cover letter to <b>careers@nexora.com</b> with subject "Marketing Coordinator Application."</p>`,
+    questions: [
+      { q: "応募締め切りはいつですか？", options: ["6月15日","6月30日","7月1日","8月1日"], answer: 1, explanation: "「Deadline: June 30, 2026」とあります。" },
+      { q: "必要な経験年数はどのくらいですか？", options: ["経験不問","最低1年","最低2年","最低5年"], answer: 2, explanation: "「Minimum 2 years of relevant experience」とあります。" },
+      { q: "応募方法として正しいのはどれですか？", options: ["オンラインフォームから申し込む","電話で連絡する","履歴書とカバーレターをメールで送る","直接オフィスに持参する"], answer: 2, explanation: "「send your résumé and cover letter to careers@nexora.com」とあります。" }
+    ]
+  },
+  {
+    genre: "email", genreLabel: "ビジネスメール",
+    title: "Order Confirmation & Shipping Update",
+    meta: "Customer Service — Brightfield Office Supplies",
+    body: `<div class="email-header">
+      <div><b>From:</b> orders@brightfield-supplies.com</div>
+      <div><b>To:</b> Daniel Okafor</div>
+      <div><b>Subject:</b> Your Order #BFS-20482 Has Shipped</div>
+    </div>
+    <p>Dear Mr. Okafor,</p>
+    <p>Thank you for your recent order. We are pleased to confirm that your order has been <b>dispatched</b> and is on its way to you.</p>
+    <p><b>Order Summary:</b><br>
+    • Premium Ergonomic Chair (x2) — $348.00<br>
+    • Adjustable Standing Desk (x1) — $219.00<br>
+    • Delivery Fee — $25.00<br>
+    <b>Total: $592.00</b></p>
+    <p>Shipped via <b>FastTrack Logistics</b>. Estimated delivery: <b>June 6–8</b>. Track with code <b>FTL-884921</b>.</p>
+    <p>Please note that someone must be present to sign for the delivery. If you are unavailable, the courier will attempt redelivery the following business day.</p>`,
+    questions: [
+      { q: "注文の合計金額はいくらですか？", options: ["$348.00","$567.00","$592.00","$219.00"], answer: 2, explanation: "「Total: $592.00」とあります。" },
+      { q: "配送時に不在の場合はどうなりますか？", options: ["注文がキャンセルされる","翌営業日に再配達される","最寄りのコンビニに届く","追加料金を請求される"], answer: 1, explanation: "「attempt redelivery the following business day」とあります。" }
+    ]
+  },
+  {
+    genre: "ad", genreLabel: "広告",
+    title: "Language School Advertisement",
+    meta: "Education Services — Global Speak Academy",
+    body: `<div class="flyer-center">
+      <div class="flyer-big">Speak the World's Language</div>
+      <div style="color:#1a6b6b;font-size:1rem;font-weight:700;margin-bottom:8px;">Global Speak Academy</div>
+    </div>
+    <p>Whether you're preparing for an international conference or a job interview, <b>Global Speak Academy</b> offers flexible, results-driven language courses tailored to your schedule.</p>
+    <p><b>Available Programs:</b></p>
+    <p class="bullet">Business English (Beginner to Advanced)</p>
+    <p class="bullet">TOEIC Intensive Preparation Course (8 weeks)</p>
+    <p class="bullet">One-on-One Executive Coaching</p>
+    <p style="margin-top:10px;"><b>Special Offer:</b> Enroll before June 30 and receive a <b>15% discount</b> on all courses plus free study materials (valued at $60).</p>
+    <p>Class size is limited to <b>8 students</b>. Online options available for all courses.</p>`,
+    questions: [
+      { q: "6月30日までに申し込むと何が得られますか？", options: ["授業料全額無料","15%割引と無料教材","無料体験授業","2コース目が半額"], answer: 1, explanation: "「15% discount on all courses plus free study materials」とあります。" },
+      { q: "クラスの最大人数は何人ですか？", options: ["5人","8人","10人","15人"], answer: 1, explanation: "「limited to 8 students」とあります。" }
+    ]
+  },
+  {
+    genre: "memo", genreLabel: "社内メモ",
+    title: "Updated Remote Work Policy",
+    meta: "Human Resources — Evergreen Technology Group",
+    body: `<div class="notice-box">
+      <div class="notice-title">MEMORANDUM</div>
+      <p>To: All Staff | From: HR Department<br>Re: Updated Remote Work Policy (Effective July 1, 2026)</p>
+    </div>
+    <p>Following a review of our current work arrangements and employee survey feedback, the HR Department is pleased to announce an update to our remote work policy.</p>
+    <p><b>Key Changes:</b></p>
+    <p class="bullet">Employees may work remotely up to <b>three days per week</b> (previously two days).</p>
+    <p class="bullet">All employees must be present in the office on <b>Tuesdays and Thursdays</b> — designated collaboration days.</p>
+    <p class="bullet">Home office equipment allowance will be increased from $300 to <b>$450 per year</b>.</p>
+    <p>Core working hours of <b>10:00 AM – 3:00 PM</b> must be maintained regardless of location. A detailed policy document will be distributed by June 15.</p>`,
+    questions: [
+      { q: "新しいポリシーでは週何日まで在宅勤務できますか？", options: ["1日","2日","3日","5日"], answer: 2, explanation: "「up to three days per week (previously two days)」とあります。" },
+      { q: "必ずオフィスに出勤しなければならない日はどれですか？", options: ["月曜と水曜","水曜と金曜","火曜と木曜","月曜と金曜"], answer: 2, explanation: "「present in the office on Tuesdays and Thursdays」とあります。" },
+      { q: "ホームオフィス機器手当の新しい金額はいくらですか？", options: ["$300/年","$350/年","$400/年","$450/年"], answer: 3, explanation: "「increased from $300 to $450 per year」とあります。" }
+    ]
+  },
+  {
+    genre: "schedule", genreLabel: "スケジュール変更",
+    title: "Conference Schedule Update",
+    meta: "Event Management — Pacific Business Forum 2026",
+    body: `<p>Dear Registered Attendees,</p>
+    <p>We would like to inform you of an important update to the <b>Pacific Business Forum 2026</b> program. Due to high demand, we have made the following adjustments:</p>
+    <p><b>Changes to Day 1 (June 20):</b></p>
+    <p class="bullet">The keynote speech by Dr. Amelia Torres has been moved from <b>9:00 AM to 10:00 AM</b> to allow additional setup time for the main hall's new audiovisual equipment.</p>
+    <p class="bullet">The networking lunch has been extended by 30 minutes and will now run from <b>12:30 PM to 2:00 PM</b>.</p>
+    <p><b>New Addition:</b></p>
+    <p class="bullet">A <b>panel discussion on sustainable business practices</b> has been added at <b>4:30 PM</b> in Hall C. Open to all registered attendees.</p>
+    <p>Your registration badge provides access to all general sessions. Workshop access requires a <b>separate ticket</b>, purchasable at the registration desk.</p>`,
+    questions: [
+      { q: "基調講演の開始時間はどうなりましたか？", options: ["9時から8時に変更","9時から10時に変更","10時から9時に変更","変更なし"], answer: 1, explanation: "「moved from 9:00 AM to 10:00 AM」とあります。" },
+      { q: "ワークショップに参加するには何が必要ですか？", options: ["事前オンライン予約","別途チケットの購入","登録バッジのみ","招待状"], answer: 1, explanation: "「Workshop access requires a separate ticket」とあります。" }
+    ]
+  },
+  {
+    genre: "notice", genreLabel: "お知らせ",
+    title: "Staff Training Day Announcement",
+    meta: "Corporate Training — Pinnacle Financial Services",
+    body: `<div class="notice-box">
+      <div class="notice-title">ANNUAL STAFF DEVELOPMENT DAY — MANDATORY ATTENDANCE</div>
+    </div>
+    <p>All employees are required to attend the <b>Annual Staff Development Day</b> on <b>Friday, June 27, 2026</b> at the <b>Grand Harbor Convention Center, Room 4A</b>.</p>
+    <p><b>Program:</b></p>
+    <p class="bullet">9:00 AM — Welcome address by CEO, Mr. Robert Hayashi</p>
+    <p class="bullet">10:00 AM — Workshop: Effective Communication in the Digital Age</p>
+    <p class="bullet">12:00 PM — Lunch (provided by the company)</p>
+    <p class="bullet">1:30 PM — Workshop: Data Security & Compliance Update</p>
+    <p class="bullet">3:30 PM — Team-building activity (outdoor)</p>
+    <p>Attendance is <b>compulsory for all full-time employees</b>. If you cannot attend due to an exceptional circumstance, you must obtain prior written approval from your department head <b>no later than June 20</b>.</p>
+    <p>Please arrive by <b>8:45 AM</b> for registration. Business casual attire recommended.</p>`,
+    questions: [
+      { q: "参加が義務付けられているのは誰ですか？", options: ["全従業員","フルタイム従業員のみ","マネージャー以上","入社1年以内の従業員"], answer: 1, explanation: "「compulsory for all full-time employees」とあります。" },
+      { q: "出席できない場合、何をいつまでにする必要がありますか？", options: ["当日朝に上司にメールする","6月20日までに書面で承認を得る","6月27日までに代理人を立てる","事前に人事部に届け出る"], answer: 1, explanation: "「prior written approval from your department head no later than June 20」とあります。" },
+      { q: "何時までに会場に到着すべきですか？", options: ["8:30 AM","8:45 AM","9:00 AM","9:15 AM"], answer: 1, explanation: "「Please arrive by 8:45 AM」とあります。" }
+    ]
+  },
+  {
+    genre: "flyer", genreLabel: "宣伝チラシ",
+    title: "Restaurant Weekday Lunch Special",
+    meta: "Food & Beverage — The Westfield Brasserie",
+    body: `<div class="flyer-center">
+      <div class="flyer-big">🍽 WEEKDAY LUNCH SPECIAL</div>
+      <div style="color:#8a4a1a;font-size:0.95rem;margin-bottom:10px;">The Westfield Brasserie</div>
+    </div>
+    <p>Available <b>Monday through Friday, 11:30 AM – 2:30 PM</b>.</p>
+    <p><b>Two-Course Lunch: $22</b> — Starter + main course</p>
+    <p><b>Three-Course Lunch: $30</b> — Starter + main + dessert</p>
+    <p>All lunch sets include:</p>
+    <p class="bullet">Freshly baked bread basket</p>
+    <p class="bullet">Choice of still or sparkling water</p>
+    <p class="bullet">Coffee or tea after your meal</p>
+    <p>For groups of <b>6 or more</b>, we offer a <b>private dining room at no additional charge</b>. Advance reservation required. Call <b>555-0321</b> or email <b>reservations@westfieldbrasserie.com</b>.</p>
+    <p style="font-size:0.78rem;color:#888;">*Prices exclude taxes and gratuity.</p>`,
+    questions: [
+      { q: "ランチスペシャルが提供される曜日と時間はいつですか？", options: ["月〜土 11:30–14:30","月〜金 11:30–14:30","月〜金 12:00–15:00","毎日 11:00–15:00"], answer: 1, explanation: "「Monday through Friday, 11:30 AM – 2:30 PM」とあります。" },
+      { q: "6名以上のグループ向けのサービスは何ですか？", options: ["10%割引","無料デザート","追加料金なしのプライベートダイニングルーム","専任ウェイターのサービス"], answer: 2, explanation: "「private dining room at no additional charge」とあります。" }
+    ]
+  }
+];
+
+// ===== GAME STATE =====
+let currentIndex = 0, order = [], answered = [], timer = null;
+let timeLeft = 75, totalCorrect = 0, totalQuestions = 0;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startGame() {
+  order = shuffle([...Array(PASSAGES.length).keys()]).slice(0, 10);
+  currentIndex = 0; totalCorrect = 0; totalQuestions = 0;
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('resultScreen').style.display = 'none';
+  document.getElementById('gameScreen').style.display = 'block';
+  document.getElementById('scoreBar').style.display = 'flex';
+  updateScoreDisplay();
+  showPassage();
+}
+
+function showPassage() {
+  const p = PASSAGES[order[currentIndex]];
+  document.getElementById('progressFill').style.width = (currentIndex / order.length * 100) + '%';
+  document.getElementById('progressText').textContent = `${currentIndex + 1} / ${order.length}`;
+  document.getElementById('timeupBanner').style.display = 'none';
+  document.getElementById('btnNext').disabled = true;
+
+  const gc = { email:'genre-email', flyer:'genre-flyer', notice:'genre-notice', job:'genre-job', schedule:'genre-schedule', memo:'genre-memo', ad:'genre-ad' };
+  const qs = p.questions.map((q, qi) => `
+    <div class="question-block" id="qblock${qi}">
+      <div class="question-text">Q${qi+1}. ${q.q}</div>
+      <div class="options">
+        ${q.options.map((opt, oi) => `
+          <button class="option-btn" id="opt${qi}_${oi}" onclick="selectAnswer(${qi},${oi})">
+            <span class="opt-label">${['(A)','(B)','(C)','(D)'][oi]}</span>
+            <span>${opt}</span>
+          </button>`).join('')}
+      </div>
+      <div class="feedback" id="fb${qi}" style="display:none"></div>
+    </div>`).join('');
+
+  document.getElementById('passageContainer').innerHTML = `
+    <span class="genre-badge ${gc[p.genre]||'genre-notice'}">${p.genreLabel}</span>
+    <div class="passage-card">
+      <div class="passage-title">${p.title}</div>
+      <div class="passage-meta">${p.meta}</div>
+      <div class="passage-body">${p.body}</div>
+    </div>
+    <div class="questions-section">
+      <h3>設問 (Questions)</h3>${qs}
+    </div>`;
+
+  answered = new Array(p.questions.length).fill(false);
+  window.scrollTo(0, 0);
+  startTimer();
+}
+
+function startTimer() {
+  clearInterval(timer);
+  timeLeft = 75;
+  updateTimerUI();
+  timer = setInterval(() => {
+    timeLeft--;
+    updateTimerUI();
+    if (timeLeft <= 0) { clearInterval(timer); timeUp(); }
+  }, 1000);
+}
+
+function updateTimerUI() {
+  const el = document.getElementById('timerText');
+  const circle = document.getElementById('timerCircle');
+  circle.style.strokeDashoffset = 138.2 * (1 - timeLeft / 75);
+  el.textContent = timeLeft;
+  if (timeLeft <= 15) { el.className = 'timer-text warn'; circle.style.stroke = '#ff6b6b'; }
+  else { el.className = 'timer-text'; circle.style.stroke = '#e8b84b'; }
+}
+
+function timeUp() {
+  document.getElementById('timeupBanner').style.display = 'block';
+  const p = PASSAGES[order[currentIndex]];
+  p.questions.forEach((q, qi) => { if (!answered[qi]) revealAnswer(qi, q.answer, q.explanation); });
+  document.getElementById('btnNext').disabled = false;
+}
+
+function selectAnswer(qi, oi) {
+  if (answered[qi]) return;
+  const q = PASSAGES[order[currentIndex]].questions[qi];
+  answered[qi] = true;
+  totalQuestions++;
+  document.querySelectorAll(`#qblock${qi} .option-btn`).forEach(b => b.disabled = true);
+  const fb = document.getElementById(`fb${qi}`);
+  if (oi === q.answer) {
+    document.getElementById(`opt${qi}_${oi}`).classList.add('correct');
+    totalCorrect++;
+    fb.className = 'feedback ok';
+    fb.textContent = '✓ 正解！ ' + q.explanation;
+  } else {
+    document.getElementById(`opt${qi}_${oi}`).classList.add('wrong');
+    document.getElementById(`opt${qi}_${q.answer}`).classList.add('reveal');
+    fb.className = 'feedback ng';
+    fb.textContent = '✗ 不正解。' + q.explanation;
+  }
+  fb.style.display = 'block';
+  updateScoreDisplay();
+  if (answered.every(Boolean)) { clearInterval(timer); document.getElementById('btnNext').disabled = false; }
+}
+
+function revealAnswer(qi, correctOi, explanation) {
+  document.querySelectorAll(`#qblock${qi} .option-btn`).forEach(b => b.disabled = true);
+  document.getElementById(`opt${qi}_${correctOi}`).classList.add('reveal');
+  const fb = document.getElementById(`fb${qi}`);
+  fb.className = 'feedback ng';
+  fb.textContent = '時間切れ。' + (explanation || '');
+  fb.style.display = 'block';
+}
+
+function updateScoreDisplay() {
+  document.getElementById('scoreCorrect').textContent = totalCorrect;
+  document.getElementById('scoreTotal').textContent = totalQuestions;
+}
+
+function nextPassage() {
+  currentIndex++;
+  if (currentIndex >= order.length) { showResult(); return; }
+  showPassage();
+}
+
+function showResult() {
+  clearInterval(timer);
+  document.getElementById('gameScreen').style.display = 'none';
+  document.getElementById('scoreBar').style.display = 'none';
+  document.getElementById('resultScreen').style.display = 'block';
+  const pct = totalQuestions > 0 ? Math.round(totalCorrect / totalQuestions * 100) : 0;
+  document.getElementById('resultScore').textContent = `${totalCorrect} / ${totalQuestions}`;
+  const comments = [
+    [90, '🏆 素晴らしい！TOEICリーディング満点レベルです！'],
+    [75, '👏 よくできました！あと少しで目標スコア達成！'],
+    [60, '📚 まずまずです。もう一度チャレンジして強化しましょう！'],
+    [0,  '💪 速読と精読のバランスを意識して練習を続けましょう！']
+  ];
+  const comment = comments.find(([t]) => pct >= t)[1];
+  document.getElementById('resultComment').textContent = `${comment}（正解率 ${pct}%）`;
+}
+
+function restartGame() {
+  document.getElementById('resultScreen').style.display = 'none';
+  startGame();
+}
+</script>
+</body>
+</html>
