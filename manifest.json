@@ -2,7 +2,7 @@
   "name": "TOEIC 速読トレーナー",
   "short_name": "速読TOEIC",
   "description": "TOEICビジネス文書の速読練習アプリ",
-  "start_url": "/index.html",
+  "start_url": "/toeic-app/index.html",
   "display": "standalone",
   "background_color": "#f5f0e8",
   "theme_color": "#1a3a5c",
