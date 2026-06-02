@@ -1,5 +1,11 @@
-const CACHE = 'toeic-v1';
-const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'toeic-v2';
+const ASSETS = [
+  '/toeic-app/',
+  '/toeic-app/index.html',
+  '/toeic-app/manifest.json',
+  '/toeic-app/icon-192.png',
+  '/toeic-app/icon-512.png'
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
