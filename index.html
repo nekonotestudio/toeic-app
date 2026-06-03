@@ -127,6 +127,27 @@
 
   .timeup-banner { background: #ff6b6b; color: white; text-align: center; padding: 7px; font-family: sans-serif; font-weight: 700; letter-spacing: 0.08em; margin-bottom: 10px; font-size: 0.85rem; }
 
+  /* Pause */
+  .pause-btn { background: none; border: 1.5px solid rgba(255,255,255,0.4); color: white; font-size: 0.8rem; font-family: sans-serif; padding: 4px 10px; cursor: pointer; letter-spacing: 0.04em; -webkit-tap-highlight-color: transparent; }
+  .pause-btn:active { background: rgba(255,255,255,0.1); }
+
+  .pause-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(18,40,65,0.96);
+    flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 40px 24px;
+  }
+  .pause-overlay.show { display: flex; }
+  .pause-overlay h2 { font-size: 1.6rem; color: white; margin-bottom: 8px; }
+  .pause-overlay p { font-size: 0.85rem; color: rgba(255,255,255,0.6); font-family: sans-serif; margin-bottom: 32px; }
+  .pause-overlay .pause-timer { font-size: 3rem; font-weight: 700; color: #e8b84b; font-family: sans-serif; margin-bottom: 6px; }
+  .pause-overlay .pause-sub { font-size: 0.78rem; color: rgba(255,255,255,0.5); font-family: sans-serif; margin-bottom: 32px; }
+  .pause-btns { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 280px; }
+  .btn-resume { background: #e8b84b; border: none; padding: 13px; font-size: 0.95rem; font-family: sans-serif; font-weight: 700; color: #1a3a5c; cursor: pointer; }
+  .btn-quit { background: none; border: 1.5px solid rgba(255,255,255,0.3); padding: 11px; font-size: 0.88rem; font-family: sans-serif; color: rgba(255,255,255,0.7); cursor: pointer; }
+  .btn-quit-note { font-size: 0.68rem; color: rgba(255,255,255,0.35); font-family: sans-serif; margin-top: 6px; }
+
   .install-banner { background: #e8b84b; color: #1a3a5c; padding: 10px 16px; font-family: sans-serif; font-size: 0.82rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .install-banner button { background: #1a3a5c; color: white; border: none; padding: 5px 14px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; }
   .install-banner .dismiss { background: transparent; color: #1a3a5c; font-size: 1rem; padding: 4px 8px; }
@@ -201,6 +222,19 @@
 </head>
 <body>
 
+<!-- ポーズオーバーレイ -->
+<div id="pauseOverlay" class="pause-overlay">
+  <h2>⏸ 一時停止中</h2>
+  <p>タイマーを止めています</p>
+  <div class="pause-timer" id="pauseTimeLeft">—</div>
+  <div class="pause-sub">残り時間</div>
+  <div class="pause-btns">
+    <button class="btn-resume" onclick="togglePause()">▶ 再開する</button>
+    <button class="btn-quit" onclick="confirmQuit()">🏠 終了してトップへ</button>
+    <div class="btn-quit-note">※ 終了するとこのセッションのスコアはリセットされます</div>
+  </div>
+</div>
+
 <!-- ロック画面 -->
 <div id="lockScreen" class="lock-screen">
   <div class="lock-logo">🐾</div>
@@ -231,6 +265,7 @@
     <div class="header-sub">Reading Speed Practice</div>
   </div>
   <div class="score-bar" id="scoreBar" style="display:none">
+    <button class="pause-btn" id="pauseBtn" onclick="togglePause()">⏸ 一時停止</button>
     <div class="points-display" id="headerPoints"><span>🐾</span><span id="headerPts">0</span></div>
     <div class="score-item">
       <div class="num" id="scoreCorrect">0</div>
@@ -565,6 +600,35 @@ let timeLeft = 75, totalCorrect = 0, totalQuestions = 0, setSize = 10;
 let isReviewMode = false;
 let reviewCorrectPassages = new Set();
 let passageWrongCount = 0;
+let isPaused = false;
+
+function togglePause() {
+  isPaused = !isPaused;
+  const overlay = document.getElementById('pauseOverlay');
+  const btn = document.getElementById('pauseBtn');
+  if (isPaused) {
+    clearInterval(timer);
+    overlay.classList.add('show');
+    document.getElementById('pauseTimeLeft').textContent = timeLeft + '秒';
+    if (btn) btn.textContent = '▶ 再開';
+  } else {
+    overlay.classList.remove('show');
+    if (btn) btn.textContent = '⏸ 一時停止';
+    // 残り時間からタイマー再開
+    timer = setInterval(() => {
+      timeLeft--;
+      updateTimerUI();
+      if (timeLeft <= 0) { clearInterval(timer); timeUp(); }
+    }, 1000);
+  }
+}
+
+function confirmQuit() {
+  clearInterval(timer);
+  isPaused = false;
+  document.getElementById('pauseOverlay').classList.remove('show');
+  goHome();
+}
 
 function shuffle(arr) {
   const a = [...arr];
