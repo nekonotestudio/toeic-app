@@ -115,6 +115,37 @@
   .install-banner { background: #e8b84b; color: #1a3a5c; padding: 10px 16px; font-family: sans-serif; font-size: 0.82rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .install-banner button { background: #1a3a5c; color: white; border: none; padding: 5px 14px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; }
   .install-banner .dismiss { background: transparent; color: #1a3a5c; font-size: 1rem; padding: 4px 8px; }
+
+  /* Stats card */
+  .stats-card { background: white; border: 1px solid #d0c8b8; border-left: 4px solid #e8b84b; padding: 14px 16px; margin: 0 auto 14px; max-width: 360px; text-align: left; }
+  .stats-card .rank { font-family: sans-serif; font-size: 0.72rem; color: #888; margin-bottom: 2px; }
+  .stats-card .title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .stats-card .title-name { font-size: 1rem; font-weight: 700; color: #1a3a5c; }
+  .stats-card .points { font-size: 1.3rem; font-weight: 700; color: #e8b84b; font-family: sans-serif; }
+  .stats-card .points span { font-size: 0.7rem; color: #aaa; font-weight: normal; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .stat-box { background: #f5f0e8; padding: 6px 8px; text-align: center; }
+  .stat-box .s-num { font-size: 1.1rem; font-weight: 700; color: #1a3a5c; font-family: sans-serif; }
+  .stat-box .s-label { font-size: 0.62rem; color: #888; font-family: sans-serif; }
+  .streak-row { margin-top: 8px; font-family: sans-serif; font-size: 0.78rem; color: #555; display: flex; align-items: center; gap: 4px; }
+  .streak-fire { font-size: 1rem; }
+
+  /* Paw animation */
+  .paw-float {
+    position: fixed; font-size: 1.6rem; pointer-events: none; z-index: 9999;
+    animation: pawFloat 0.9s ease-out forwards;
+  }
+  @keyframes pawFloat {
+    0%   { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-80px) scale(1.4); opacity: 0; }
+  }
+
+  /* Point flash in header */
+  .point-flash { animation: flashGold 0.4s ease; }
+  @keyframes flashGold { 0%,100% { color: #e8b84b; } 50% { color: #fff; } }
+
+  /* Header points */
+  .points-display { font-size: 0.85rem; font-family: sans-serif; color: #e8b84b; font-weight: 700; display: flex; align-items: center; gap: 3px; }
 </style>
 </head>
 <body>
@@ -133,6 +164,7 @@
     <div class="header-sub">Reading Speed Practice</div>
   </div>
   <div class="score-bar" id="scoreBar" style="display:none">
+    <div class="points-display" id="headerPoints"><span>🐾</span><span id="headerPts">0</span></div>
     <div class="score-item">
       <div class="num" id="scoreCorrect">0</div>
       <div class="label">正解</div>
@@ -163,6 +195,20 @@
       <div class="feature-tag">🗒 メモ</div>
       <div class="feature-tag">📅 スケジュール</div>
     </div>
+    <div id="statsCard" class="stats-card" style="display:none">
+      <div class="rank">称号</div>
+      <div class="title-row">
+        <div class="title-name" id="statTitle">— </div>
+        <div class="points" id="statPoints">0 <span>🐾 pt</span></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="s-num" id="statCorrect">0</div><div class="s-label">累計正解</div></div>
+        <div class="stat-box"><div class="s-num" id="statAccuracy">—</div><div class="s-label">正解率</div></div>
+        <div class="stat-box"><div class="s-num" id="statSessions">0</div><div class="s-label">セッション</div></div>
+      </div>
+      <div class="streak-row"><span class="streak-fire">🔥</span><span id="statStreak">0日連続学習中</span></div>
+    </div>
+
     <div class="mode-cards" id="modeCards">
       <div class="mode-card" onclick="startGame(10)">
         <div class="badge">おすすめ</div>
@@ -201,6 +247,7 @@
     <h2>お疲れさまでした！</h2>
     <div class="result-score" id="resultScore">0/0</div>
     <div class="result-comment" id="resultComment"></div>
+    <div id="resultStats" style="background:white;border:1px solid #d0c8b8;border-left:4px solid #e8b84b;padding:12px 16px;margin:0 auto 20px;max-width:320px;text-align:left;font-family:sans-serif;"></div>
     <div class="result-btns">
       <button class="btn-restart" onclick="restartGame()">もう一度</button>
       <button class="btn-restart" style="background:#1a3a5c;color:white" onclick="goHome()">トップへ</button>
@@ -228,6 +275,99 @@ document.getElementById('installBtn')?.addEventListener('click', async () => {
   deferredPrompt = null;
   document.getElementById('installBanner').style.display = 'none';
 });
+
+// ===== STATS & POINTS (localStorage) =====
+const STATS_KEY = 'toeic_stats';
+
+const TITLES = [
+  [0,    '🐱 見習いリーダー'],
+  [30,   '📖 英語の卵'],
+  [80,   '✏️ 速読の芽'],
+  [150,  '📝 ビジネス英語生'],
+  [300,  '💼 準TOEICer'],
+  [500,  '🎯 TOEICハンター'],
+  [800,  '⚡ 速読マスター'],
+  [1200, '🏆 ビジネス英語王'],
+  [2000, '🌟 レジェンドリーダー'],
+];
+
+function getStats() {
+  try { return JSON.parse(localStorage.getItem(STATS_KEY)) || defaultStats(); }
+  catch { return defaultStats(); }
+}
+function defaultStats() {
+  return { points:0, totalCorrect:0, totalQuestions:0, totalSessions:0, streak:0, lastPlayDate:'', bestStreak:0 };
+}
+function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
+
+function getTitle(pts) {
+  const t = [...TITLES].reverse().find(([threshold]) => pts >= threshold);
+  return t ? t[1] : TITLES[0][1];
+}
+function getNextTitle(pts) {
+  const next = TITLES.find(([threshold]) => pts < threshold);
+  return next ? `次の称号まで ${next[0] - pts}pt` : '最高称号達成！';
+}
+
+function updateStatsAfterSession(correctCount, questionCount) {
+  const s = getStats();
+  s.totalCorrect += correctCount;
+  s.totalQuestions += questionCount;
+  s.totalSessions += 1;
+
+  // Streak check
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (s.lastPlayDate === today) {
+    // already played today — no streak change
+  } else if (s.lastPlayDate === yesterday) {
+    s.streak += 1;
+  } else {
+    s.streak = 1;
+  }
+  s.lastPlayDate = today;
+  if (s.streak > (s.bestStreak || 0)) s.bestStreak = s.streak;
+  saveStats(s);
+}
+
+function addPoints(pts, x, y) {
+  const s = getStats();
+  s.points = (s.points || 0) + pts;
+  saveStats(s);
+  // update header display
+  const el = document.getElementById('headerPts');
+  if (el) { el.textContent = s.points; el.classList.remove('point-flash'); void el.offsetWidth; el.classList.add('point-flash'); }
+  // floating paw animation
+  spawnPaw(pts, x, y);
+}
+
+function spawnPaw(pts, x, y) {
+  const el = document.createElement('div');
+  el.className = 'paw-float';
+  el.textContent = pts >= 3 ? '🐾🐾🐾' : '🐾';
+  el.style.left = (x || window.innerWidth / 2) + 'px';
+  el.style.top  = (y || window.innerHeight / 2) + 'px';
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+function renderStatsCard() {
+  const s = getStats();
+  const card = document.getElementById('statsCard');
+  if (!card) return;
+  if (s.totalSessions === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  document.getElementById('statTitle').textContent = getTitle(s.points);
+  document.getElementById('statPoints').innerHTML = `${s.points} <span>🐾 pt &nbsp;${getNextTitle(s.points)}</span>`;
+  document.getElementById('statCorrect').textContent = s.totalCorrect;
+  const acc = s.totalQuestions > 0 ? Math.round(s.totalCorrect / s.totalQuestions * 100) + '%' : '—';
+  document.getElementById('statAccuracy').textContent = acc;
+  document.getElementById('statSessions').textContent = s.totalSessions;
+  const streakTxt = s.streak > 0
+    ? `${s.streak}日連続学習中！${s.bestStreak > 1 ? '（最高' + s.bestStreak + '日）' : ''}`
+    : '今日も学習してストリークをスタート！';
+  document.getElementById('statStreak').textContent = streakTxt;
+}
 
 // ===== REVIEW (localStorage) =====
 const STORAGE_KEY = 'toeic_wrong_passages';
@@ -308,6 +448,10 @@ function startGame(n) {
   document.getElementById('resultScreen').style.display = 'none';
   document.getElementById('gameScreen').style.display = 'block';
   document.getElementById('scoreBar').style.display = 'flex';
+  // ヘッダーにポイント表示
+  const pts = getStats().points || 0;
+  const headerPts = document.getElementById('headerPts');
+  if (headerPts) headerPts.textContent = pts;
   updateScoreDisplay();
   showPassage();
 }
@@ -394,23 +538,29 @@ function selectAnswer(qi, oi) {
     totalCorrect++;
     fb.className = 'feedback ok';
     fb.textContent = '✓ 正解！ ' + q.explanation;
+    // ポイント付与（クリックした場所から飛ばす）
+    const btn = document.getElementById(`opt${qi}_${oi}`);
+    const rect = btn.getBoundingClientRect();
+    addPoints(1, rect.left + rect.width / 2, rect.top);
   } else {
     document.getElementById(`opt${qi}_${oi}`).classList.add('wrong');
     document.getElementById(`opt${qi}_${q.answer}`).classList.add('reveal');
     fb.className = 'feedback ng';
     fb.textContent = '✗ 不正解。' + q.explanation;
     passageWrongCount++;
-    addWrong(passageIdx); // 間違い→復習リストへ
+    addWrong(passageIdx);
   }
   fb.style.display = 'block';
   updateScoreDisplay();
   if (answered.every(Boolean)) {
     clearInterval(timer);
     document.getElementById('btnNext').disabled = false;
-    // 復習モードで全問正解なら復習リストから除去
-    if (isReviewMode && passageWrongCount === 0) {
-      removeWrong(passageIdx);
+    // パッセージ全問正解ボーナス
+    if (passageWrongCount === 0 && answered.length > 1) {
+      setTimeout(() => addPoints(3, window.innerWidth / 2, window.innerHeight / 3), 300);
     }
+    // 復習モードで全問正解なら復習リストから除去
+    if (isReviewMode && passageWrongCount === 0) removeWrong(passageIdx);
   }
 }
 
@@ -439,6 +589,7 @@ function showResult() {
   document.getElementById('gameScreen').style.display = 'none';
   document.getElementById('scoreBar').style.display = 'none';
   document.getElementById('resultScreen').style.display = 'block';
+  updateStatsAfterSession(totalCorrect, totalQuestions);
   const pct = totalQuestions > 0 ? Math.round(totalCorrect / totalQuestions * 100) : 0;
   document.getElementById('resultScore').textContent = `${totalCorrect} / ${totalQuestions}`;
   let comment = '';
@@ -452,7 +603,21 @@ function showResult() {
     comment = comments.find(([t]) => pct >= t)[1];
   }
   document.getElementById('resultComment').textContent = comment + `（正解率 ${pct}%）`;
-  updateReviewCard(); // 復習カードを更新
+  updateReviewCard();
+
+  // 結果画面のStats表示
+  const s = getStats();
+  const rsEl = document.getElementById('resultStats');
+  if (rsEl) {
+    rsEl.innerHTML = `
+      <div style="font-size:0.7rem;color:#888;margin-bottom:4px;">あなたの記録</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:0.95rem;font-weight:700;color:#1a3a5c;">${getTitle(s.points)}</div>
+        <div style="font-size:1.1rem;font-weight:700;color:#e8b84b;">🐾 ${s.points} pt</div>
+      </div>
+      <div style="font-size:0.75rem;color:#888;margin-top:4px;">${getNextTitle(s.points)}</div>
+      <div style="margin-top:8px;font-size:0.78rem;color:#555;">🔥 ${s.streak}日連続学習中</div>`;
+  }
 }
 
 function restartGame() {
@@ -468,10 +633,14 @@ function goHome() {
   document.getElementById('startScreen').style.display = 'block';
   isReviewMode = false;
   updateReviewCard();
+  renderStatsCard();
 }
 
-// 起動時に復習カードを表示
-window.addEventListener('DOMContentLoaded', () => updateReviewCard());
+// 起動時に復習カード・統計カードを表示
+window.addEventListener('DOMContentLoaded', () => {
+  updateReviewCard();
+  renderStatsCard();
+});
 </script>
 </body>
 </html>
