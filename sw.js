@@ -1,7 +1,10 @@
-const CACHE = 'toeic-v2';
+const CACHE = 'toeic-v3';
 const ASSETS = [
   '/toeic-app/',
   '/toeic-app/index.html',
+  '/toeic-app/passages.js',
+  '/toeic-app/passages2.js',
+  '/toeic-app/passages3.js',
   '/toeic-app/manifest.json',
   '/toeic-app/icon-192.png',
   '/toeic-app/icon-512.png'
