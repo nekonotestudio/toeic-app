@@ -614,12 +614,17 @@ function showPassage() {
       <div class="feedback" id="fb${qi}" style="display:none"></div>
     </div>`).join('');
 
+  // ヒントなしの場合は本文のbタグを除去
+  const bodyHtml = isHintOn()
+    ? p.body
+    : p.body.replace(/<b>(.*?)<\/b>/g, '$1');
+
   document.getElementById('passageContainer').innerHTML = `
     <span class="genre-badge ${gc[p.genre]||'genre-notice'}">${p.genreLabel}</span>
     <div class="passage-card">
       <div class="passage-title">${p.title}</div>
       <div class="passage-meta">${p.meta}</div>
-      <div class="passage-body">${p.body}</div>
+      <div class="passage-body">${bodyHtml}</div>
     </div>
     <div class="questions-section">
       <h3>設問 (Questions)</h3>${qs}
@@ -675,9 +680,7 @@ function selectAnswer(qi, oi) {
     document.getElementById(`opt${qi}_${oi}`).classList.add('correct');
     totalCorrect++;
     fb.className = 'feedback ok';
-    fb.innerHTML = hintOn
-      ? `✓ 正解！ <b>${q.explanation}</b>`
-      : '✓ 正解！';
+    fb.textContent = '✓ 正解！ ' + q.explanation;
     const btn = document.getElementById(`opt${qi}_${oi}`);
     const rect = btn.getBoundingClientRect();
     addPoints(1, rect.left + rect.width / 2, rect.top);
@@ -685,9 +688,7 @@ function selectAnswer(qi, oi) {
     document.getElementById(`opt${qi}_${oi}`).classList.add('wrong');
     document.getElementById(`opt${qi}_${q.answer}`).classList.add('reveal');
     fb.className = 'feedback ng';
-    fb.innerHTML = hintOn
-      ? `✗ 不正解。<b>${q.explanation}</b>`
-      : '✗ 不正解。';
+    fb.textContent = '✗ 不正解。' + q.explanation;
     passageWrongCount++;
     addWrong(passageIdx);
   }
@@ -710,9 +711,7 @@ function revealAnswer(qi, correctOi, explanation) {
   document.getElementById(`opt${qi}_${correctOi}`).classList.add('reveal');
   const fb = document.getElementById(`fb${qi}`);
   fb.className = 'feedback ng';
-  fb.innerHTML = isHintOn()
-    ? `時間切れ。<b>${explanation || ''}</b>`
-    : '時間切れ。';
+  fb.textContent = '時間切れ。' + (explanation || '');
   fb.style.display = 'block';
 }
 
