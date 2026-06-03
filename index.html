@@ -99,6 +99,21 @@
   .mode-card.review-card:active { background: #fff0ee; }
   .review-count { font-size: 1.3rem; font-weight: 700; color: #cc2200; }
   .clear-btn { background: none; border: none; font-size: 0.72rem; color: #aaa; font-family: sans-serif; cursor: pointer; text-decoration: underline; margin-top: 6px; }
+
+  /* Hint toggle */
+  .hint-toggle-wrap { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 4px 0 16px; font-family: sans-serif; font-size: 0.82rem; color: #666; }
+  .hint-toggle { position: relative; width: 48px; height: 26px; cursor: pointer; }
+  .hint-toggle input { opacity: 0; width: 0; height: 0; }
+  .hint-slider { position: absolute; inset: 0; background: #c8bfb0; transition: 0.2s; border-radius: 26px; }
+  .hint-slider:before { content:""; position:absolute; width:20px; height:20px; left:3px; bottom:3px; background:white; transition:0.2s; border-radius:50%; }
+  .hint-toggle input:checked + .hint-slider { background: #1a3a5c; }
+  .hint-toggle input:checked + .hint-slider:before { transform: translateX(22px); }
+  .hint-label-on  { color: #1a3a5c; font-weight: 600; }
+  .hint-label-off { color: #aaa; }
+
+  /* feedback bold vs normal */
+  .feedback.ok b, .feedback.ng b { font-weight: 700; }
+  .feedback.no-hint { font-style: normal; letter-spacing: 0; }
   .start-features { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
   .feature-tag { background: #1a3a5c; color: white; padding: 4px 10px; font-family: sans-serif; font-size: 0.72rem; }
 
@@ -281,6 +296,14 @@
         <p>間違えたパッセージをもう一度</p>
         <button class="clear-btn" onclick="event.stopPropagation();clearReview()">復習リストをリセット</button>
       </div>
+    </div>
+    <div class="hint-toggle-wrap">
+      <span class="hint-label-off">ヒントなし（難）</span>
+      <label class="hint-toggle">
+        <input type="checkbox" id="hintToggle" checked onchange="updateHintLabels()">
+        <span class="hint-slider"></span>
+      </label>
+      <span class="hint-label-on" id="hintLabelOn">ヒントあり（易）</span>
     </div>
     <p style="font-size:0.78rem;color:#999;">全100パッセージ収録 — 毎回ランダム出題</p>
   </div>
@@ -511,12 +534,36 @@ function startReview() {
   showPassage();
 }
 
+// Hint mode
+function isHintOn() {
+  const el = document.getElementById('hintToggle');
+  return el ? el.checked : true;
+}
+function updateHintLabels() {
+  const on = isHintOn();
+  const labelOn  = document.getElementById('hintLabelOn');
+  const wrap = document.querySelector('.hint-toggle-wrap');
+  if (!wrap) return;
+  const spans = wrap.querySelectorAll('span:not(.hint-slider)');
+  // spans[0] = "ヒントなし", spans[1] = "ヒントあり"
+  if (on) {
+    spans[0].style.color = '#aaa';
+    spans[0].style.fontWeight = 'normal';
+    spans[1].style.color = '#1a3a5c';
+    spans[1].style.fontWeight = '600';
+  } else {
+    spans[0].style.color = '#cc2200';
+    spans[0].style.fontWeight = '600';
+    spans[1].style.color = '#aaa';
+    spans[1].style.fontWeight = 'normal';
+  }
+}
+
 // Game state
 let currentIndex = 0, order = [], answered = [], timer = null;
 let timeLeft = 75, totalCorrect = 0, totalQuestions = 0, setSize = 10;
 let isReviewMode = false;
 let reviewCorrectPassages = new Set();
-// per-passage answer tracking for review graduation
 let passageWrongCount = 0;
 
 function shuffle(arr) {
@@ -623,12 +670,14 @@ function selectAnswer(qi, oi) {
   document.querySelectorAll(`#qblock${qi} .option-btn`).forEach(b => b.disabled = true);
   const fb = document.getElementById(`fb${qi}`);
   const passageIdx = order[currentIndex];
+  const hintOn = isHintOn();
   if (oi === q.answer) {
     document.getElementById(`opt${qi}_${oi}`).classList.add('correct');
     totalCorrect++;
     fb.className = 'feedback ok';
-    fb.textContent = '✓ 正解！ ' + q.explanation;
-    // ポイント付与（クリックした場所から飛ばす）
+    fb.innerHTML = hintOn
+      ? `✓ 正解！ <b>${q.explanation}</b>`
+      : '✓ 正解！';
     const btn = document.getElementById(`opt${qi}_${oi}`);
     const rect = btn.getBoundingClientRect();
     addPoints(1, rect.left + rect.width / 2, rect.top);
@@ -636,7 +685,9 @@ function selectAnswer(qi, oi) {
     document.getElementById(`opt${qi}_${oi}`).classList.add('wrong');
     document.getElementById(`opt${qi}_${q.answer}`).classList.add('reveal');
     fb.className = 'feedback ng';
-    fb.textContent = '✗ 不正解。' + q.explanation;
+    fb.innerHTML = hintOn
+      ? `✗ 不正解。<b>${q.explanation}</b>`
+      : '✗ 不正解。';
     passageWrongCount++;
     addWrong(passageIdx);
   }
@@ -659,7 +710,9 @@ function revealAnswer(qi, correctOi, explanation) {
   document.getElementById(`opt${qi}_${correctOi}`).classList.add('reveal');
   const fb = document.getElementById(`fb${qi}`);
   fb.className = 'feedback ng';
-  fb.textContent = '時間切れ。' + (explanation || '');
+  fb.innerHTML = isHintOn()
+    ? `時間切れ。<b>${explanation || ''}</b>`
+    : '時間切れ。';
   fb.style.display = 'block';
 }
 
