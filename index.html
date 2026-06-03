@@ -93,6 +93,12 @@
   .mode-card h3 { font-size: 0.95rem; color: #1a3a5c; margin-bottom: 4px; font-family: sans-serif; }
   .mode-card p { font-size: 0.78rem; color: #666; font-family: sans-serif; margin: 0; }
   .mode-card .badge { display: inline-block; background: #e8b84b; color: #1a3a5c; font-size: 0.65rem; font-family: sans-serif; font-weight: 700; padding: 1px 6px; margin-bottom: 4px; }
+  .mode-card.review-card { border-color: #cc2200; }
+  .mode-card.review-card h3 { color: #cc2200; }
+  .mode-card.review-card .badge { background: #cc2200; color: white; }
+  .mode-card.review-card:active { background: #fff0ee; }
+  .review-count { font-size: 1.3rem; font-weight: 700; color: #cc2200; }
+  .clear-btn { background: none; border: none; font-size: 0.72rem; color: #aaa; font-family: sans-serif; cursor: pointer; text-decoration: underline; margin-top: 6px; }
   .start-features { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
   .feature-tag { background: #1a3a5c; color: white; padding: 4px 10px; font-family: sans-serif; font-size: 0.72rem; }
 
@@ -157,7 +163,7 @@
       <div class="feature-tag">🗒 メモ</div>
       <div class="feature-tag">📅 スケジュール</div>
     </div>
-    <div class="mode-cards">
+    <div class="mode-cards" id="modeCards">
       <div class="mode-card" onclick="startGame(10)">
         <div class="badge">おすすめ</div>
         <h3>📖 10問セット</h3>
@@ -170,6 +176,12 @@
       <div class="mode-card" onclick="startGame(ALL_PASSAGES.length)">
         <h3>🏆 全100問チャレンジ</h3>
         <p>全パッセージをランダム順で出題</p>
+      </div>
+      <div id="reviewCard" class="mode-card review-card" onclick="startReview()" style="display:none">
+        <div class="badge">復習</div>
+        <h3>🔁 復習モード <span class="review-count" id="reviewCount">0</span>問</h3>
+        <p>間違えたパッセージをもう一度</p>
+        <button class="clear-btn" onclick="event.stopPropagation();clearReview()">復習リストをリセット</button>
       </div>
     </div>
     <p style="font-size:0.78rem;color:#999;">全100パッセージ収録 — 毎回ランダム出題</p>
@@ -217,9 +229,65 @@ document.getElementById('installBtn')?.addEventListener('click', async () => {
   document.getElementById('installBanner').style.display = 'none';
 });
 
+// ===== REVIEW (localStorage) =====
+const STORAGE_KEY = 'toeic_wrong_passages';
+
+function getWrongSet() {
+  try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function saveWrongSet(s) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...s]));
+}
+function addWrong(passageIdx) {
+  const s = getWrongSet();
+  s.add(passageIdx);
+  saveWrongSet(s);
+}
+function removeWrong(passageIdx) {
+  const s = getWrongSet();
+  s.delete(passageIdx);
+  saveWrongSet(s);
+}
+function clearReview() {
+  if (!confirm('復習リストをリセットしますか？')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  updateReviewCard();
+}
+function updateReviewCard() {
+  const s = getWrongSet();
+  const card = document.getElementById('reviewCard');
+  const cnt = document.getElementById('reviewCount');
+  if (s.size > 0) {
+    card.style.display = 'block';
+    cnt.textContent = s.size;
+  } else {
+    card.style.display = 'none';
+  }
+}
+function startReview() {
+  const s = getWrongSet();
+  if (s.size === 0) return;
+  isReviewMode = true;
+  order = shuffle([...s]);
+  currentIndex = 0; totalCorrect = 0; totalQuestions = 0;
+  // track which passages were fully correct in this review
+  reviewCorrectPassages = new Set();
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('resultScreen').style.display = 'none';
+  document.getElementById('gameScreen').style.display = 'block';
+  document.getElementById('scoreBar').style.display = 'flex';
+  updateScoreDisplay();
+  showPassage();
+}
+
 // Game state
 let currentIndex = 0, order = [], answered = [], timer = null;
 let timeLeft = 75, totalCorrect = 0, totalQuestions = 0, setSize = 10;
+let isReviewMode = false;
+let reviewCorrectPassages = new Set();
+// per-passage answer tracking for review graduation
+let passageWrongCount = 0;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -231,6 +299,8 @@ function shuffle(arr) {
 }
 
 function startGame(n) {
+  isReviewMode = false;
+  reviewCorrectPassages = new Set();
   setSize = n;
   order = shuffle([...Array(ALL_PASSAGES.length).keys()]).slice(0, n);
   currentIndex = 0; totalCorrect = 0; totalQuestions = 0;
@@ -275,6 +345,7 @@ function showPassage() {
     </div>`;
 
   answered = new Array(p.questions.length).fill(false);
+  passageWrongCount = 0;
   window.scrollTo(0, 0);
   startTimer();
 }
@@ -298,7 +369,15 @@ function updateTimerUI() {
 function timeUp() {
   document.getElementById('timeupBanner').style.display = 'block';
   const p = ALL_PASSAGES[order[currentIndex]];
-  p.questions.forEach((q, qi) => { if (!answered[qi]) revealAnswer(qi, q.answer, q.explanation); });
+  const passageIdx = order[currentIndex];
+  let hadUnanswered = false;
+  p.questions.forEach((q, qi) => {
+    if (!answered[qi]) {
+      revealAnswer(qi, q.answer, q.explanation);
+      hadUnanswered = true;
+    }
+  });
+  if (hadUnanswered) addWrong(passageIdx); // 時間切れ→復習リストへ
   document.getElementById('btnNext').disabled = false;
 }
 
@@ -309,6 +388,7 @@ function selectAnswer(qi, oi) {
   totalQuestions++;
   document.querySelectorAll(`#qblock${qi} .option-btn`).forEach(b => b.disabled = true);
   const fb = document.getElementById(`fb${qi}`);
+  const passageIdx = order[currentIndex];
   if (oi === q.answer) {
     document.getElementById(`opt${qi}_${oi}`).classList.add('correct');
     totalCorrect++;
@@ -319,10 +399,19 @@ function selectAnswer(qi, oi) {
     document.getElementById(`opt${qi}_${q.answer}`).classList.add('reveal');
     fb.className = 'feedback ng';
     fb.textContent = '✗ 不正解。' + q.explanation;
+    passageWrongCount++;
+    addWrong(passageIdx); // 間違い→復習リストへ
   }
   fb.style.display = 'block';
   updateScoreDisplay();
-  if (answered.every(Boolean)) { clearInterval(timer); document.getElementById('btnNext').disabled = false; }
+  if (answered.every(Boolean)) {
+    clearInterval(timer);
+    document.getElementById('btnNext').disabled = false;
+    // 復習モードで全問正解なら復習リストから除去
+    if (isReviewMode && passageWrongCount === 0) {
+      removeWrong(passageIdx);
+    }
+  }
 }
 
 function revealAnswer(qi, correctOi, explanation) {
@@ -352,8 +441,18 @@ function showResult() {
   document.getElementById('resultScreen').style.display = 'block';
   const pct = totalQuestions > 0 ? Math.round(totalCorrect / totalQuestions * 100) : 0;
   document.getElementById('resultScore').textContent = `${totalCorrect} / ${totalQuestions}`;
-  const comments = [[90,'🏆 素晴らしい！TOEICリーディング満点レベルです！'],[75,'👏 よくできました！あと少しで目標スコア達成！'],[60,'📚 まずまず。もう一度チャレンジして強化しましょう！'],[0,'💪 速読と精読のバランスを意識して練習を続けましょう！']];
-  document.getElementById('resultComment').textContent = comments.find(([t]) => pct >= t)[1] + `（正解率 ${pct}%）`;
+  let comment = '';
+  if (isReviewMode) {
+    const remaining = getWrongSet().size;
+    comment = remaining === 0
+      ? '🎉 全ての復習問題をクリアしました！完璧です！'
+      : `🔁 復習完了！残り ${remaining} 問を引き続き練習しましょう。`;
+  } else {
+    const comments = [[90,'🏆 素晴らしい！TOEICリーディング満点レベルです！'],[75,'👏 よくできました！あと少しで目標スコア達成！'],[60,'📚 まずまず。もう一度チャレンジして強化しましょう！'],[0,'💪 速読と精読のバランスを意識して練習を続けましょう！']];
+    comment = comments.find(([t]) => pct >= t)[1];
+  }
+  document.getElementById('resultComment').textContent = comment + `（正解率 ${pct}%）`;
+  updateReviewCard(); // 復習カードを更新
 }
 
 function restartGame() {
@@ -367,7 +466,12 @@ function goHome() {
   document.getElementById('gameScreen').style.display = 'none';
   document.getElementById('scoreBar').style.display = 'none';
   document.getElementById('startScreen').style.display = 'block';
+  isReviewMode = false;
+  updateReviewCard();
 }
+
+// 起動時に復習カードを表示
+window.addEventListener('DOMContentLoaded', () => updateReviewCard());
 </script>
 </body>
 </html>
