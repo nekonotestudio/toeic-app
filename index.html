@@ -116,6 +116,42 @@
   .install-banner button { background: #1a3a5c; color: white; border: none; padding: 5px 14px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; }
   .install-banner .dismiss { background: transparent; color: #1a3a5c; font-size: 1rem; padding: 4px 8px; }
 
+  /* Lock screen */
+  .lock-screen {
+    min-height: 100dvh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 24px; text-align: center;
+    background: #1a3a5c;
+  }
+  .lock-logo { font-size: 3.5rem; margin-bottom: 6px; }
+  .lock-title { font-size: 1.4rem; color: white; margin-bottom: 4px; }
+  .lock-sub { font-size: 0.82rem; color: rgba(255,255,255,0.55); font-family: sans-serif; margin-bottom: 32px; }
+  .lock-box {
+    background: white; padding: 28px 24px; width: 100%; max-width: 340px;
+  }
+  .lock-box label { display: block; font-size: 0.78rem; font-family: sans-serif; color: #888; margin-bottom: 6px; text-align: left; letter-spacing: 0.06em; text-transform: uppercase; }
+  .lock-input {
+    width: 100%; padding: 11px 14px; font-size: 1rem; font-family: sans-serif;
+    border: 1.5px solid #c8bfb0; outline: none; letter-spacing: 0.15em;
+    margin-bottom: 12px;
+  }
+  .lock-input:focus { border-color: #1a3a5c; }
+  .lock-input.shake { animation: shake 0.35s ease; border-color: #cc2200; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%,60% { transform: translateX(-8px); }
+    40%,80% { transform: translateX(8px); }
+  }
+  .lock-btn {
+    width: 100%; background: #e8b84b; border: none; padding: 12px;
+    font-size: 0.95rem; font-family: sans-serif; font-weight: 700;
+    color: #1a3a5c; cursor: pointer; letter-spacing: 0.04em;
+  }
+  .lock-btn:active { background: #d4a535; }
+  .lock-error { font-size: 0.78rem; color: #cc2200; font-family: sans-serif; margin-top: 8px; min-height: 18px; }
+  .lock-footer { font-size: 0.7rem; color: rgba(255,255,255,0.35); font-family: sans-serif; margin-top: 24px; }
+
   /* Stats card */
   .stats-card { background: white; border: 1px solid #d0c8b8; border-left: 4px solid #e8b84b; padding: 14px 16px; margin: 0 auto 14px; max-width: 360px; text-align: left; }
   .stats-card .rank { font-family: sans-serif; font-size: 0.72rem; color: #888; margin-bottom: 2px; }
@@ -150,6 +186,22 @@
 </head>
 <body>
 
+<!-- ロック画面 -->
+<div id="lockScreen" class="lock-screen">
+  <div class="lock-logo">🐾</div>
+  <div class="lock-title">TOEIC 速読トレーナー</div>
+  <div class="lock-sub">Reading Speed Practice</div>
+  <div class="lock-box">
+    <label>アクセスコード</label>
+    <input type="password" id="lockInput" class="lock-input" placeholder="••••••••"
+      autocomplete="off" inputmode="text" onkeydown="if(event.key==='Enter')checkPassword()">
+    <button class="lock-btn" onclick="checkPassword()">アンロック →</button>
+    <div class="lock-error" id="lockError"></div>
+  </div>
+  <div class="lock-footer">ご購入ありがとうございます。コードはご購入ページをご確認ください。</div>
+</div>
+
+<div id="appContent" style="display:none">
 <div id="installBanner" style="display:none" class="install-banner">
   <span>📱 ホーム画面に追加してアプリとして使えます</span>
   <div style="display:flex;gap:6px;flex-shrink:0">
@@ -255,6 +307,8 @@
   </div>
 </div>
 
+</div><!-- /appContent -->
+
 <script src="passages.js"></script>
 <script src="passages2.js"></script>
 <script src="passages3.js"></script>
@@ -275,6 +329,42 @@ document.getElementById('installBtn')?.addEventListener('click', async () => {
   deferredPrompt = null;
   document.getElementById('installBanner').style.display = 'none';
 });
+
+// ===== PASSWORD LOCK =====
+// ★ここを変えるだけでパスワード変更OK★
+const APP_PASSWORD = 'toeic2026';
+const UNLOCK_KEY   = 'toeic_unlocked';
+
+function checkPassword() {
+  const input = document.getElementById('lockInput');
+  const err   = document.getElementById('lockError');
+  if (input.value.trim() === APP_PASSWORD) {
+    localStorage.setItem(UNLOCK_KEY, '1');
+    unlock();
+  } else {
+    err.textContent = '❌ コードが違います。もう一度お試しください。';
+    input.classList.remove('shake');
+    void input.offsetWidth;
+    input.classList.add('shake');
+    input.value = '';
+    input.focus();
+  }
+}
+
+function unlock() {
+  document.getElementById('lockScreen').style.display  = 'none';
+  document.getElementById('appContent').style.display  = 'block';
+  updateReviewCard();
+  renderStatsCard();
+}
+
+// 起動時チェック
+(function() {
+  if (localStorage.getItem(UNLOCK_KEY) === '1') {
+    unlock();
+  }
+  // まだ未ロック解除 → lockScreenはデフォルト表示のまま
+})();
 
 // ===== STATS & POINTS (localStorage) =====
 const STATS_KEY = 'toeic_stats';
@@ -636,11 +726,7 @@ function goHome() {
   renderStatsCard();
 }
 
-// 起動時に復習カード・統計カードを表示
-window.addEventListener('DOMContentLoaded', () => {
-  updateReviewCard();
-  renderStatsCard();
-});
+// ※ 起動時の復習カード・統計カードはunlock()内で呼ぶ
 </script>
 </body>
 </html>
